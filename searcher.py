@@ -3,9 +3,6 @@ import numpy as np
 import time
 from hex_skeleton import HexBoard
 
-#MAX = 999
-#MIN = -999
-
 run_time = 0 
 elapsed_time = 0
 beta_cutoff = 0
@@ -328,8 +325,6 @@ def dijkstra(graph, source, goal):
         prev [v] = None
         Q.add(v) 
     dist[source] = 0
-    #print("lenQ",len(Q))
-    #print("lenGraph",len(Graph))
     
     while len(Graph) != 0: # Why does not work for len(Q)
         u = None
@@ -397,3 +392,6 @@ def store(board, g, d, bm):
     global trans_table
     trans_table[(b, d)] = (g, bm) # store values of trans_table
     #print("Transposition Table",trans_table)
+    
+    
+    
