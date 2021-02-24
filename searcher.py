@@ -55,16 +55,16 @@ class searcher:
             return bm
         
     def heuristicEval(self,board):
-        AI_color = self.color
-        #board.print()
-        graph1 = createGraph(board,AI_color)
-        val1 = dijkstra(graph1,'start','end')
-        graph2 = createGraph(board,board.get_opposite_color(AI_color))
-        val2 = dijkstra(graph2,'start','end')
-        #print(val2-val1)
-        # instead of simple dijstra, compute dijkstra from both player perspective
-        # and gives difference between both 
-        return val2-val1, (10,10)
+        agent_color = self.color
+        dijk_graph_1 = createGraph(board,agent_color)
+        value_1 = dijkstra(dijk_graph_1,'start','end')
+        dijk_graph_2 = createGraph(board,board.get_opposite_color(agent_color))
+        value_2 = dijkstra(dijk_graph_2,'start','end')
+        
+        # intead of simple dijkstra dist compute objective dijkstra dist
+        # as difference between both player values
+        obj_d_dist = value_2 - value_1 # objective dijkstra distance
+        return obj_d_dist, (10,10)
     
     def alpha_beta(self, board, depth, alpha, beta, max_player, color, 
                    time_limit):   

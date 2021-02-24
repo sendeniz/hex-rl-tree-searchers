@@ -3,7 +3,7 @@ from hex_skeleton import HexBoard
 from trueskill import Rating, quality_1vs1, rate_1vs1
 
 player1_ratings = Rating()
-player1_ratings = Rating()
+player2_ratings = Rating()
 
 # initalizing the board
 size = 4
@@ -14,9 +14,8 @@ board = HexBoard(size)
 player_1 = player(playerType = 'A.I', color = HexBoard.RED, policy = 'random',
                   eval = 'dijkstra', depth = 2, time_limit = None)
 # player_1 = player(playerType = 'Human', color = HexBoard.RED) 
-player_2 = player(playerType = 'A.I', color = HexBoard.BLUE, policy = 'i_deep', 
+player_2 = player(playerType = 'A.I', color = HexBoard.BLUE, policy = 'alphabeta', 
                   eval = 'dijkstra', depth = 2, time_limit = 0.5)
-# player_1 = player(playerType = 'A.I', color = HexBoard.BLUE, policy = 'ttalphabeta', eval = 'dijkstra', depth = 3, iterDeep = False, time_limit = 0.02)
 
 
 def play(player1,player2,board,verbose = True):
@@ -34,8 +33,8 @@ def play(player1,player2,board,verbose = True):
         turn += 1
         
         if verbose == True:
-            print('--------TURN-{}---------------'.format(turn))
-            print("------------Player-1:{}[{}] turn-------------".format(player1.playerType,player1.policy))
+            print("--------turn:{}".format(turn))
+            print("------------Player 1:{}[{}] turn-------------".format(player1.playerType,player1.policy))
             board.print()
         # calling player-1 move    
         player1.move(board,verbose=verbose)
@@ -44,7 +43,7 @@ def play(player1,player2,board,verbose = True):
         if board.check_win(player1.color):
             if verbose == True:
                 board.print()
-            print("The Game is Over. Player-1: {}[{}] won the game".format(player1.playerType,player1.policy))
+            print("The Game is Over. Player 1: {}[{}] won the game".format(player1.playerType,player1.policy))
             player1_ratings,player2_ratings = rate_1vs1(player1_ratings,player2_ratings)
             break
         
