@@ -18,7 +18,6 @@ class searcher:
         self.board = board
         self.color = color
         self.eval = eval
-        #self.iter_deep = iter_deep
         self.time_limit = time_limit
     
     def findBestMove(self):
@@ -51,7 +50,7 @@ class searcher:
                                         time_limit = self.time_limit)
             return bm
         
-    def heuristicEval(self,board):
+    def heuristic_eval(self,board):
         agent_color = self.color
         dijk_graph_1 = createGraph(board,agent_color)
         value_1 = dijkstra(dijk_graph_1,'start','end')
@@ -76,7 +75,7 @@ class searcher:
         moveList = getMoveList(board)
         if (depth <= 0) or (board.game_over):
             #board.print()
-            return self.heuristicEval(board)
+            return self.heuristic_eval(board)
         
         elif max_player: # Max Player
             
@@ -142,6 +141,7 @@ class searcher:
         d_cal = maxDepth - depth
         (hit, g, ttbm) = lookup(board, d_cal)
         #print((hit, g, ttbm))
+        
         # If hit
         if hit and d_cal >= 2:
             return g, ttbm
@@ -156,7 +156,7 @@ class searcher:
             moveList = [ttbm] + getMoveList(board) #, ordering=True)
         if (depth <= 0) or (board.game_over):
             #board.print()
-            return self.heuristicEval(board), bm
+            return self.heuristic_eval(board), bm
         
         elif max_player: # Max Player
             
@@ -229,7 +229,7 @@ class searcher:
         store(board, g, d_cal, bm)
         return g, bm # return best value and best move
     
-    def iter_deep(self, board, max_player, alpha, beta, color, time_limit=2, TT=False):
+    def iter_deep(self, board, max_player, alpha, beta, color, time_limit, TT=False):
         global maxDepth
     
         # Start timer
@@ -241,20 +241,20 @@ class searcher:
     
         while True:
             if TT:
-                # find the bestMove iteratively for differnt depths but with use of transposition tables
+                
+                # find the bm  with use of transposition tables and iterative depth
                 __, bm = self.tt_alpha_beta(board, depth, alpha, beta, max_player, color,
                           time_limit)
     
             else:
-                # find the bestMove iterative for differnt depths using AlphaBeta without the implementation of
-                # transposition table
+                # find the bm  without use of transposition tables and iterative depth
                 __, bm = self.alpha_beta(board, depth, alpha, beta, max_player, color, 
                         time_limit)
     
             # If the time taken by the A.I is outside the specified time, return the current best move
             elapsed = time.time() - start
-            print('Time Elapsed:{}'.format(elapsed))
-            print('Time Limit:{}'.format(time_limit))
+            #print('Time Elapsed:{}'.format(elapsed))
+            #print('Time Limit:{}'.format(time_limit))
             if elapsed > time_limit:
             #if time.time() - start > time_limit or depth > maxDepth:
                 print('searched till depth:{}'.format(depth))
@@ -264,9 +264,9 @@ class searcher:
             if bm is None:
                 return prev_bm
     
-            # Storing previous move for fallback procedure if the depth exceeds to the limits off the borad
+            # fail save previous bm 
             prev_bm = bm
-            # incrementing depth and maxDepth with every iteration
+
             depth += 1
             maxDepth += 1
 #------------------------------------------------------------------------------------------------

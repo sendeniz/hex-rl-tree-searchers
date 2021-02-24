@@ -14,9 +14,10 @@ board = HexBoard(size)
 player_1 = player(playerType = 'A.I', color = HexBoard.RED, policy = 'random',
                   eval = 'dijkstra', depth = 2, time_limit = None)
 # player_1 = player(playerType = 'Human', color = HexBoard.RED) 
-player_2 = player(playerType = 'A.I', color = HexBoard.BLUE, policy = 'alphabeta', 
+# player_2 = player(playerType = 'A.I', color = HexBoard.BLUE, policy = 'alphabeta', 
+#                  eval = 'dijkstra', depth = 2, time_limit = None)
+player_2 = player(playerType = 'A.I', color = HexBoard.BLUE, policy = 'i_deep', 
                   eval = 'dijkstra', depth = 2, time_limit = 0.5)
-
 
 def play(player1,player2,board,verbose = True):
  

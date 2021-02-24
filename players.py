@@ -11,11 +11,10 @@ class player:
         self.policy = policy
         self.eval = eval
         self.depth = depth
-        #self.iter_deep = iter_deep
         self.time_limit = time_limit
 
 
-    def move(self,board,verbose):
+    def move(self, board,verbose):
 
         # condition if player is human
         if self.playerType == "Human":
@@ -39,6 +38,7 @@ class player:
                             break
                         else:
                             print("This tile has already been taken by the enemy player. The move is not possible")
+                    
                     except KeyError:
 
                         print("This tile has already been taken by the enemy player. The move is not possible")
