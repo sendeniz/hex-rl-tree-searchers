@@ -269,13 +269,13 @@ class searcher:
 
             depth += 1
             maxDepth += 1
-#------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 def weight(move,board):
     if board.is_empty(move):
         return 1
     else:
         return 0
-#------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 def createGraph(board,color):
     
     active_nodes = [key for key in board.board.keys() if board.board[key] != board.get_opposite_color(color)]
@@ -310,7 +310,7 @@ def createGraph(board,color):
         graph[node]['end'] = 0
         
     return graph
-#-----------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 def dijkstra(graph, source, goal):  
     dist = {}
     prev = {}
@@ -355,7 +355,7 @@ def unMakeMove(board, move):
     return board
 #-----------------------------------------------------------------------------
 def getMoveList(board):
-    # finding the co-ordinates which are empty given the board space
+    # finding tboard space x-y axis which are empty
     lst = [key for key in board.board.keys() if board.board[key] == 3]
     return lst
 

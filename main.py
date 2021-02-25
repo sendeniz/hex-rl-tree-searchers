@@ -5,9 +5,9 @@ from trueskill import Rating, quality_1vs1, rate_1vs1
 player1_ratings = Rating()
 player2_ratings = Rating()
 
-# initalizing the board
-size = 4
-board = HexBoard(size)
+
+size = 4 # board size
+board = HexBoard(size) # init board 
 
 
 # initialize the player type
@@ -30,17 +30,16 @@ def play(player1,player2,board,verbose = True):
     # While the game is not finished
     while not board.game_over:
         
-        #increment turn after every round of the game
-        turn += 1
+        turn += 1 # increase turn after a round of the game
         
         if verbose == True:
-            print("--------turn:{}".format(turn))
-            print("------------Player 1:{}[{}] turn-------------".format(player1.playerType,player1.policy))
+            print("turn:{}".format(turn))
+            print("Player 1:{}[{}]".format(player1.playerType,player1.policy))
             board.print()
-        # calling player-1 move    
-        player1.move(board,verbose=verbose)
         
-        # Check if player-1 won the game
+        player1.move(board,verbose=verbose) # player_1 moves
+        
+        # if player _1 won game then :
         if board.check_win(player1.color):
             if verbose == True:
                 board.print()
@@ -49,12 +48,12 @@ def play(player1,player2,board,verbose = True):
             break
         
         if verbose == True:
-            print("------------Player 2:{}[{}] turn-------------".format(player2.playerType, player2.policy))
+            print("Player 2:{}[{}]".format(player2.playerType, player2.policy))
             board.print()
-        # calling player-2 move
-        player2.move(board,verbose=verbose)
+        
+        player2.move(board,verbose=verbose) # player_2 moves
 
-        #check if player-2 won the game
+        # if player_2 won game then :
         if board.check_win(player2.color):
             if verbose == True:
                 
@@ -63,8 +62,8 @@ def play(player1,player2,board,verbose = True):
             player2_ratings,player1_ratings = rate_1vs1(player2_ratings,player1_ratings)
             break
 
-games = 25
-for i in range(games):
+n_games = 4
+for i in range(n_games):
     size = 4
     board = HexBoard(size)
     play(player_1,player_2,board,verbose=False)
