@@ -2,16 +2,23 @@ import random
 import numpy as np
 import time
 from hex_skeleton import HexBoard
+import copy
 
 run_time = 0 
 elapsed_time = 0
 beta_cutoff = 0
 alpha_cutoff = 0
+
+tt_beta_cutoff = 0
+tt_alpha_cutoff = 0
+
 maxDepth = 1
+AI_color = HexBoard.BLUE
 
-class searcher:
+class Searcher:
 
-    def __init__(self, depth, policy, board, color, eval, time_limit):
+    def __init__(self, depth, policy, board, color, eval = None, time_limit = 1, 
+                 use_tt = False, max_iter = 100, C = np.sqrt(2)):
         
         self.depth = depth
         self.policy = policy
@@ -19,15 +26,18 @@ class searcher:
         self.color = color
         self.eval = eval
         self.time_limit = time_limit
+        self.use_tt = use_tt
+        self.max_iter = max_iter
+        self.C = C
     
-    def findBestMove(self):
+    def find_bm(self):
         
-        # dummy evaluation as random move
+        # agent will use random action (dummy evaluation) policy
         if self.policy == "random":
             moveList = getMoveList(self.board)
             return random.choice(moveList)
         
-        # alpha beta decision policy for AI
+        # agent will use alpha beta as policy
         elif self.policy == "alphabeta":
             __, bm = self.alpha_beta(board = self.board, depth = self.depth, 
                                      alpha = np.NINF, beta = np.Inf, max_player = True, 
@@ -35,7 +45,7 @@ class searcher:
                                      time_limit = self.time_limit)
             return bm
         
-        # alpha beta + transposition tables decision poliy for AI
+        # agent will use alpha beta policy with transposition tables
         elif self.policy == "ttalphabeta":
             __, bm = self.tt_alpha_beta(board = self.board, depth = self.depth, 
                                         alpha = np.NINF, beta = np.Inf, max_player = True, 
@@ -43,27 +53,39 @@ class searcher:
                                         time_limit = self.time_limit)
             return bm
         
-        elif self.policy == "i_deep":
+        # agent will use alpha beta policy with iterative deepning with or without 
+        # transposition tables
+        elif self.policy == "iterdeep":
             bm = self.iter_deep(board = self.board,
                                         alpha = np.NINF, beta = np.Inf, max_player = True, 
                                         color = self.color,
-                                        time_limit = self.time_limit)
+                                        time_limit = self.time_limit, use_tt=self.use_tt)
             return bm
         
+        # agent will use monte carlo tree search policy 
+        elif self.policy == 'mcts':
+            bm = self.mc_tree_search(board = self.board, color = self.color, 
+                           max_iter = self.max_iter, C = self.C)
+            return bm
+                
     def heuristic_eval(self,board):
         agent_color = self.color
-        dijk_graph_1 = createGraph(board,agent_color)
-        value_1 = dijkstra(dijk_graph_1,'start','end')
-        dijk_graph_2 = createGraph(board,board.get_opposite_color(agent_color))
-        value_2 = dijkstra(dijk_graph_2,'start','end')
+        opposite_color = board.get_opposite_color(agent_color)
+        
+        dijk_graph_1 = makeGraph(board,agent_color)
+        value_1 = dijkstra(dijk_graph_1, 'start', 'end')
+        
+        dijk_graph_2 = makeGraph(board, opposite_color)
+        value_2 = dijkstra(dijk_graph_2, 'start', 'end')
         
         # intead of simple dijkstra dist compute objective dijkstra dist
         # as difference between both player values
-        obj_d_dist = value_2 - value_1 # objective dijkstra distance
+        obj_d_dist = value_2 - value_1
         return obj_d_dist, (10,10)
     
     def alpha_beta(self, board, depth, alpha, beta, max_player, color, 
                    time_limit):   
+        # print("Alpha Beta Policy")
         global alpha_cutoff
         global beta_cutoff
         global run_time
@@ -74,7 +96,7 @@ class searcher:
         
         moveList = getMoveList(board)
         if (depth <= 0) or (board.game_over):
-            #board.print()
+            # board.print()
             return self.heuristic_eval(board)
         
         elif max_player: # Max Player
@@ -82,7 +104,6 @@ class searcher:
             g = np.NINF # best value g
             
             # iterate over c moves 
-            #for move in getMoveList(board): # search best move
             for move in moveList:
                 board = makeMove(board, move, color)
                 
@@ -90,17 +111,18 @@ class searcher:
                                          False, time_limit, 
                                          board.get_opposite_color(color))
                 board = unMakeMove(board, move)
-                #print("gc:",gc)
-                #print("g:",g)
+                
                 if gc >= g : # if value gc  >= best value g
                     bm = move # save best move information
-                g = max(gc,g) # max (value, best value)
+                g = max(gc, g) # max (value, best value)
                 alpha = max(alpha, g) # update alpha
+                #print("alpha:({}),beta:({}),value gc:({}), value g:({})".format(alpha , beta, gc, g))
+
 
                 if alpha >= beta:
                     # global beta_cutoff
                     beta_cutoff +=1
-                    #print("beta cutoff:",beta_cutoff)
+                    # print("beta cutoff:({})".format(beta_cutoff))
                     break
 
         elif not max_player: # Min player
@@ -115,55 +137,61 @@ class searcher:
                                          True, time_limit, 
                                          board.get_opposite_color(color))
                 board = unMakeMove(board,move)
-                #print("gc:",gc)
-                #print("g:",g)
+                
                 if gc <= g: # if value gc <= best value g
                     bm = move # store best move info
-                g = min(gc,g) # min(value, best value)
+                
+                g = min(gc, g) # min(value, best value)
                 beta = min(beta, g) # update beta
+                #print("alpha:({}),beta:({}),value gc:({}), value g:({})".format(alpha , beta, gc, g))
 
                 if alpha >= beta:
-                    #global alpha_cutoff
+                    global alpha_cutoff
                     alpha_cutoff +=1
-                    #print("alpha cutoff:", alpha_cutoff)
+                    # print("alpha cutoff:({})".format(alpha_cutoff))
                     break
                 
             run_time += time.time() - start_time
-            #print("run_time:",run_time)
+            # print("Sys Run Time:({})".format(run_time))
+            # board.print()
         return g, bm # return best value and best move
         
     def tt_alpha_beta(self, board, depth, alpha, beta, max_player, color,
                       time_limit):   
         # print("TT Alpha Beta Active")
         global run_time
+        global tt_beta_cutoff
+        global tt_alpha_cutoff
+        
         start_time = time.time()
         
-        d_cal = maxDepth - depth
-        (hit, g, ttbm) = lookup(board, d_cal)
-        #print((hit, g, ttbm))
+        delta_depth = maxDepth - depth
+        (hit, g, ttbm) = lookup(board, delta_depth)
+        # print((hit, g, ttbm))
         
-        # If hit
-        if hit and d_cal >= 2:
+        # if hit occurs then and if field is empty then:
+        if hit and delta_depth >= 2 and board.board[ttbm] == 3:
             return g, ttbm
             
         bm = None # initalize best moves to store
         
-        # If not hit and TT table is empty
+        # if no hit and transposition table is empty then:
         if ttbm is None:
-            moveList = getMoveList(board) # , ordering=True)
-        # If not hit and TT table has some move associated with it.
+            moveList = getMoveList(board)
+        
+        # if not hit and transposition table is not empty then:
         else:
-            moveList = [ttbm] + getMoveList(board) #, ordering=True)
+            moveList = [ttbm] + getMoveList(board)
+        
         if (depth <= 0) or (board.game_over):
-            #board.print()
             return self.heuristic_eval(board), bm
         
         elif max_player: # Max Player
             
             g = np.NINF # best value g
             
-            # iterate over c moves 
-            for move in moveList: # search best move
+            # iterate over c moves to find best move
+            for move in moveList: 
                 board = makeMove(board, move, color)
                 
                 gc, __ = self.tt_alpha_beta(board, depth-1, alpha, beta, 
@@ -171,24 +199,22 @@ class searcher:
                                             time_limit)
                 
                 if isinstance (gc, tuple) == True:
-                    gc_temp = gc[0]
+                    gc = gc[0]
                 else :
-                    gc_temp = gc
-                #gc_temp = gc[0]
+                    gc = gc
+                
                 board = unMakeMove(board,move)
                
-                # if gc >= g : # if value gc  >= best value g
-                if gc_temp > g : # if value gc  >= best value g
+                if gc >= g : # if value gc  >= best value g
                     bm = move # save best move information
-                    #g = gc
-                    g = gc_temp
-
+                    g = gc
+                
                 alpha = max(alpha,g) # update alpha
-
+                # print("alpha:({}),beta:({}),value gc:({}), value g:({})".format(alpha , beta, gc, g))
+                
                 if alpha >= beta:
-                    global beta_cutoff
-                    beta_cutoff +=1
-                    print("beta cutoff:", beta_cutoff)
+                    tt_beta_cutoff +=1
+                    # print("tt beta cutoff:({})".format(tt_beta_cutoff))
                     break
 
         elif not max_player: # Min player
@@ -205,33 +231,33 @@ class searcher:
                                             time_limit)
                 
                 if isinstance (gc, tuple) == True:
-                    gc_temp = gc[0]
+                    gc = gc[0]
                 else :
-                    gc_temp = gc
+                    gc = gc
                 
-                board = unMakeMove(board,move)
+                board = unMakeMove(board, move)
                 
-                # if gc <= g: # if value gc <= best value g
-                if gc_temp > g : # if value gc  >= best value g
+                if gc <= g :
                     bm = move # store best move info
-                    # g = gc
-                    g = gc_temp
+                    g = gc
                 
                 beta = min(beta, g) # update beta
+                # print("alpha:({}),beta:({}),value gc:({}), value g:({})".format(alpha , beta, gc, g))
+                
                 if alpha >= beta:
-                    global alpha_cutoff
-                    alpha_cutoff +=1
-                    print("alpha cutoff:",alpha_cutoff)
+                    tt_alpha_cutoff +=1
+                    # print("tt alpha cutoff:({})".format(tt_alpha_cutoff))
                     break
             
             run_time += time.time() - start_time
-            #print("run_time:",run_time)
-        store(board, g, d_cal, bm)
+            # print("run_time:",run_time)
+            # board.print()
+        save(board, g, delta_depth, bm)
         return g, bm # return best value and best move
     
-    def iter_deep(self, board, max_player, alpha, beta, color, time_limit, TT=False):
+    def iter_deep(self, board, max_player, alpha, beta, color, time_limit, use_tt):
         global maxDepth
-    
+
         # Start timer
         start = time.time()
         # initialize depth
@@ -240,7 +266,7 @@ class searcher:
         prev_bm = tuple()
     
         while True:
-            if TT:
+            if use_tt:
                 
                 # find the bm  with use of transposition tables and iterative depth
                 __, bm = self.tt_alpha_beta(board, depth, alpha, beta, max_player, color,
@@ -251,16 +277,18 @@ class searcher:
                 __, bm = self.alpha_beta(board, depth, alpha, beta, max_player, color, 
                         time_limit)
     
-            # If the time taken by the A.I is outside the specified time, return the current best move
             elapsed = time.time() - start
-            #print('Time Elapsed:{}'.format(elapsed))
-            #print('Time Limit:{}'.format(time_limit))
-            if elapsed > time_limit:
+            # print('Time Elapsed:{}'.format(elapsed))
+            # print('Time Limit:{}'.format(time_limit))
+            # print('Time is UP:{}'.format(elapsed >= time_limit))
+            # if not time limit is left then:
+            if elapsed >= time_limit:
             #if time.time() - start > time_limit or depth > maxDepth:
-                print('searched till depth:{}'.format(depth))
+                # print('sarched depth:{}'.format(depth))
                 return bm
     
-            # If the depth exceeds the board space, the bestMove is None. Thus we return the previous best value
+            # if boardspace exceeds depth, then bm is none and return previously
+            # store bm
             if bm is None:
                 return prev_bm
     
@@ -269,54 +297,127 @@ class searcher:
 
             depth += 1
             maxDepth += 1
+
+    def mc_tree_search(self, board, color, max_iter, C):
+        # print("Max iter set to{}:",max_iter)
+        # print("C_val set to{}:",C)
+        
+        rootnode = Node(board, color)
+        for _ in range(max_iter):
+            node = rootnode
+            # state s
+            s = copy.deepcopy(rootnode.board)
+    
+            # select node
+            while node.new_m == [] and node.childNodes != []:
+                # print("Selection Active")
+    
+                node = node.ucts(C)
+                # state s
+                s = makeMove(s, node.move, s.get_opposite_color(node.Ncolor))
+    
+            # expand
+            if node.new_m:
+    
+                mve = node.new_m[np.random.choice(len(node.new_m))]
+                s = makeMove(s, mve, node.Ncolor)
+                node.new_m.remove(mve)
+                child = Node(s, s.get_opposite_color(node.Ncolor))
+                child.move = mve
+                
+                if s.is_game_over:
+                    child.terminal = True
+                node.add_child(child)
+                node = child
+            
+            # obtain move list and shuffle
+            m = getMoveList(s)
+            np.random.shuffle(m)
+            
+            # player 1 and player 2 moves
+            p1_m = m[:len(m) // 2]
+            p2_m = m[len(m) // 2:]
+            s.board.update(zip(p1_m, [node.Ncolor] * len(p1_m)))
+            s.board.update(zip(p2_m, [s.get_opposite_color(node.Ncolor)] * len(p2_m)))
+    
+            result = s.check_win(AI_color)
+    
+            s.board.update(zip(m, [HexBoard.EMPTY] * len(m)))
+    
+            
+            # perform backpropagation
+            while node is not None:
+                node = node.update_node_params(int(result))
+    
+        # print('time-taken: {}'.format(time.time()-start))
+        bm = sorted(rootnode.childNodes, key = lambda c: c.v)[-1].move
+        return bm
 #-----------------------------------------------------------------------------
-def weight(move,board):
+def makeMove(board, move, color):
+    board.place(move, color)
+    return board
+
+def unMakeMove(board, move):
+    board.board[move] = 3  # assigning empty board position
+    if board.game_over == True:
+        board.game_over = False
+    return board
+
+def getMoveList(board):
+    # finding tboard space x-y axis which are empty
+    lst = [key for key in board.board.keys() if board.board[key] == 3]
+    return lst
+
+# obtain weights w 
+def w(move, board):
     if board.is_empty(move):
         return 1
     else:
         return 0
-#-----------------------------------------------------------------------------
-def createGraph(board,color):
+
+def makeGraph(board, color):
     
-    active_nodes = [key for key in board.board.keys() if board.board[key] != board.get_opposite_color(color)]
-    visited_nodes = [key for key in board.board.keys() if board.board[key] == board.get_opposite_color(color)]
+    # obtain active nodes
+    a_nodes = [key for key in board.board.keys() if board.board[key] != board.get_opposite_color(color)]
+    # obtain visited nodes
+    v_nodes = [key for key in board.board.keys() if board.board[key] == board.get_opposite_color(color)]
     
     if color == board.RED:
-        start = [node for node in active_nodes if node[1] == 0]
-        end = [node for node in active_nodes if node[1] == board.size-1]
-    else:
-        start = [node for node in active_nodes if node[0] == 0]
-        end = [node for node in active_nodes if node[0] == board.size-1]
+        start = [node for node in a_nodes if node[1] == 0]
+        end = [node for node in a_nodes if node[1] == board.size - 1]
     
-    end = [node for node in active_nodes if board.border(color,node)]
+    else:
+        start = [node for node in a_nodes if node[0] == 0]
+        end = [node for node in a_nodes if node[0] == board.size - 1]
+    
+    end = [node for node in a_nodes if board.border(color,node)]
     graph = dict()
-    graph['start'] = {key:weight(key,board) for key in start}
+    graph['start'] = {key:w(key,board) for key in start}
     graph['end'] = {key:0 for key in end}
     
-    for node in active_nodes:
+    for node in a_nodes:
         neighbors = board.get_neighbors(node)
-        neighbors = list(filter(lambda x: (x not in visited_nodes), neighbors))
+        neighbors = list(filter(lambda x: (x not in v_nodes), neighbors))
         link = {}
             
         for n in neighbors:
-            link[n] = weight(n,board)
+            link[n] = w(n, board)
             
         graph[node] = link
         
     for node in start:
-        graph[node]['start'] = weight(node,board)
+        graph[node]["start"] = w(node, board)
     
     for node in end:
-        graph[node]['end'] = 0
+        graph[node]["end"] = 0
         
     return graph
-#-----------------------------------------------------------------------------
+
 def dijkstra(graph, source, goal):  
     dist = {}
     prev = {}
     Q = set()
     Graph = graph.copy()
-    # inf = 99
     
     # for each vortex v in Graph
     for v in Graph: 
@@ -343,22 +444,8 @@ def dijkstra(graph, source, goal):
         Graph.pop(u)
 
     return dist[goal]
-#-----------------------------------------------------------------------------
-def makeMove(board, move, color):
-    board.place(move, color)
-    return board
-#-----------------------------------------------------------------------------
-def unMakeMove(board, move):
-    board.board[move] = 3  # assigning empty board position
-    if board.game_over == True:
-        board.game_over = False
-    return board
-#-----------------------------------------------------------------------------
-def getMoveList(board):
-    # finding tboard space x-y axis which are empty
-    lst = [key for key in board.board.keys() if board.board[key] == 3]
-    return lst
 
+#-----Alpha Beta Table Enhancements-------------------------------------------
 trans_table = dict()
 
 def lookup (board, depth):
@@ -368,10 +455,11 @@ def lookup (board, depth):
     # find key 
     if (b, depth) in trans_table:
         g, ttbm = trans_table[(b, depth)]
-        #print(g,ttbm)
+        # print(g,ttbm)
         return True, g, ttbm
     
-    else: # if trans_table empty 
+    # if trans_table empty then:
+    else: 
         if not trans_table:
             return False, None, None
 
@@ -379,6 +467,7 @@ def lookup (board, depth):
         keys = [key for key in trans_table.keys() if key[1] == depth]
         ttbm = None
         g = np.NINF
+        
         # searhc trans_table for bm when no hit occured
         for key in keys:
             if trans_table[key][0] > g:
@@ -386,12 +475,61 @@ def lookup (board, depth):
                 # print(g,ttbm)
         return False, g, ttbm
 
-def store(board, g, d, bm):
+def save(board, g, d, bm):
     # hash board state
     b = tuple(sorted(board.board.items()))
     global trans_table
     trans_table[(b, d)] = (g, bm) # store values of trans_table
-    #print("Transposition Table",trans_table)
+    # print("Transposition Table", trans_table)
     
-    
-    
+#---Monte Carlo Tree Search---------------------------------------------------
+class Node:
+
+    def __init__(self, board, color):
+
+        # node params
+        self.v = 1 # visited node
+        self.w = 0 # win node
+
+        # tree params: parent N, child n
+        self.parent = None
+        self.childNodes = []
+
+        # state s
+        self.board = board
+        self.Ncolor = color
+
+        # terminal node/terminal leaf
+        self.terminal = False
+
+        # availaible moves as new moves that have not been tried before
+        self.new_m = getMoveList(self.board)
+        self.move = None
+
+    def add_child(self, obj):
+        # add child to parent node
+
+        obj.parent = self
+        self.childNodes.append(obj)
+
+    def ucts(self, C = np.sqrt(2)):
+        # float C is exploration/explotation tradeoff
+        max_val = 0
+        bestNode = None
+
+        for child in self.childNodes:
+            
+            uct = (child.w / child.v) + C * (np.sqrt(np.log(child.parent.v) / child.v))
+
+            if uct >= max_val:
+                max_val = uct
+                bestNode = child
+        return bestNode
+
+    def update_node_params(self, result):
+        
+        # v vistied, w win
+        self.v += 1
+        self.w += result
+
+        return self.parent
