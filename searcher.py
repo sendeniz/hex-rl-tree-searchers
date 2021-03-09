@@ -6,8 +6,27 @@ import copy
 
 run_time = 0 
 elapsed_time = 0
+
+d3_run_time = 0 
+d4_run_time = 0 
+
+d3_rt_lst = []
+d4_rt_lst = []
+
 beta_cutoff = 0
 alpha_cutoff = 0
+
+d3_nodes_searched = 0
+d4_nodes_searched = 0
+
+d3_total_cutoff = 0
+d4_total_cutoff = 0
+
+d3_beta_cutoff = 0
+d3_alpha_cutoff = 0
+
+d4_beta_cutoff = 0
+d4_alpha_cutoff = 0
 
 tt_beta_cutoff = 0
 tt_alpha_cutoff = 0
@@ -18,7 +37,7 @@ AI_color = HexBoard.BLUE
 class Searcher:
 
     def __init__(self, depth, policy, board, color, eval = None, time_limit = 1, 
-                 use_tt = False, max_iter = 100, C = np.sqrt(2)):
+                 use_tt = False, max_iter = 100, C = np.sqrt(2), switch = False):
         
         self.depth = depth
         self.policy = policy
@@ -29,6 +48,7 @@ class Searcher:
         self.use_tt = use_tt
         self.max_iter = max_iter
         self.C = C
+        self.switch = switch
     
     def find_bm(self):
         
@@ -42,7 +62,7 @@ class Searcher:
             __, bm = self.alpha_beta(board = self.board, depth = self.depth, 
                                      alpha = np.NINF, beta = np.Inf, max_player = True, 
                                      color = self.color, 
-                                     time_limit = self.time_limit)
+                                     time_limit = self.time_limit, switch = self.switch)
             return bm
         
         # agent will use alpha beta policy with transposition tables
@@ -50,7 +70,7 @@ class Searcher:
             __, bm = self.tt_alpha_beta(board = self.board, depth = self.depth, 
                                         alpha = np.NINF, beta = np.Inf, max_player = True, 
                                         color = self.color,
-                                        time_limit = self.time_limit)
+                                        time_limit = self.time_limit, switch = self.switch)
             return bm
         
         # agent will use alpha beta policy with iterative deepning with or without 
@@ -59,7 +79,8 @@ class Searcher:
             bm = self.iter_deep(board = self.board,
                                         alpha = np.NINF, beta = np.Inf, max_player = True, 
                                         color = self.color,
-                                        time_limit = self.time_limit, use_tt=self.use_tt)
+                                        time_limit = self.time_limit, use_tt=self.use_tt,
+                                        switch=self.switch)
             return bm
         
         # agent will use monte carlo tree search policy 
@@ -84,12 +105,22 @@ class Searcher:
         return obj_d_dist, (10,10)
     
     def alpha_beta(self, board, depth, alpha, beta, max_player, color, 
-                   time_limit):   
+                   time_limit, switch):   
         # print("Alpha Beta Policy")
-        global alpha_cutoff
-        global beta_cutoff
-        global run_time
-        global elapsed_time 
+        global d3_run_time
+        global d4_run_time
+        
+        global d3_total_cutoff
+        global d4_total_cutoff
+                
+        global d3_beta_cutoff 
+        global d3_alpha_cutoff 
+
+        global d4_beta_cutoff 
+        global d4_alpha_cutoff 
+        
+        global d3_nodes_searched
+        global d4_nodes_searched
         
         start_time = time.time()
         bm = None # initalize best moves to store
@@ -105,11 +136,19 @@ class Searcher:
             
             # iterate over c moves 
             for move in moveList:
+                
+                if switch == False:
+                    d3_nodes_searched += 1
+                    # print("Depth 3 nodes searched:({})".format(d3_nodes_searched))
+                elif switch == True:
+                    d4_nodes_searched += 1
+                    # print("Depth $ nodes searched:({})".format(d4_nodes_searched))
+                
                 board = makeMove(board, move, color)
                 
                 gc, __ = self.alpha_beta(board, depth - 1, alpha, beta, 
                                          False, time_limit, 
-                                         board.get_opposite_color(color))
+                                         board.get_opposite_color(color), switch)
                 board = unMakeMove(board, move)
                 
                 if gc >= g : # if value gc  >= best value g
@@ -120,22 +159,39 @@ class Searcher:
 
 
                 if alpha >= beta:
-                    # global beta_cutoff
-                    beta_cutoff +=1
-                    # print("beta cutoff:({})".format(beta_cutoff))
-                    break
+                    
+                    if switch == False:
+                        d3_beta_cutoff += 1
+                        d3_total_cutoff += 1
+                        # print("Depth 3 beta cutoff:({})".format(d3_beta_cutoff))
+                        # print("Depth 3 total cutoff:({})".format(d3_total_cutoff))
+                        
+                    elif switch == True:
+                        d4_beta_cutoff += 1
+                        d4_total_cutoff += 1
+                        # print("Depth 4 beta cutoff:({})".format(d4_beta_cutoff))
+                        # print("Depth 4 total cutoff:({})".format(d4_total_cutoff))
 
+                    break
+                
         elif not max_player: # Min player
             
             g = np.Inf # best value g
             
             # iterative over c moves
-            # for move in getMoveList(board):
             for move in moveList:
+                
+                if switch == False:
+                    d3_nodes_searched += 1
+                    # print("Depth 3 nodes searched:({})".format(d3_nodes_searched))
+                elif switch == True:
+                    d4_nodes_searched += 1
+                    # print("Depth $ nodes searched:({})".format(d4_nodes_searched))
+                
                 board = makeMove(board,move,color)
                 gc, __ = self.alpha_beta(board, depth - 1, alpha, beta, 
                                          True, time_limit, 
-                                         board.get_opposite_color(color))
+                                         board.get_opposite_color(color), switch)
                 board = unMakeMove(board,move)
                 
                 if gc <= g: # if value gc <= best value g
@@ -143,21 +199,35 @@ class Searcher:
                 
                 g = min(gc, g) # min(value, best value)
                 beta = min(beta, g) # update beta
-                #print("alpha:({}),beta:({}),value gc:({}), value g:({})".format(alpha , beta, gc, g))
+                # print("alpha:({}),beta:({}),value gc:({}), value g:({})".format(alpha , beta, gc, g))
 
                 if alpha >= beta:
-                    global alpha_cutoff
-                    alpha_cutoff +=1
-                    # print("alpha cutoff:({})".format(alpha_cutoff))
+                    
+                    if switch == False:
+                        d3_alpha_cutoff += 1
+                        d3_total_cutoff += 1
+                        # print("Depth 3 alpha cutoff:({})".format(d3_alpha_cutoff))
+                        # print("Depth 3 total cutoff:({})".format(d3_total_cutoff))
+                        
+                    elif switch == True:
+                        d4_alpha_cutoff += 1
+                        d4_total_cutoff += 1
+                        # print("Depth 4 alpha cutoff:({})".format(d4_alpha_cutoff))
+                        # print("Depth 4 total cutoff:({})".format(d4_total_cutoff))
                     break
-                
-            run_time += time.time() - start_time
+
+            if switch == False:
+                d3_run_time += time.time() - start_time
+            
+            elif switch == True:
+                d4_run_time += time.time() - start_time
+            
             # print("Sys Run Time:({})".format(run_time))
             # board.print()
         return g, bm # return best value and best move
         
     def tt_alpha_beta(self, board, depth, alpha, beta, max_player, color,
-                      time_limit):   
+                      time_limit, switch):   
         # print("TT Alpha Beta Active")
         global run_time
         global tt_beta_cutoff
@@ -170,7 +240,7 @@ class Searcher:
         # print((hit, g, ttbm))
         
         # if hit occurs then and if field is empty then:
-        if hit and delta_depth >= 2 and board.board[ttbm] == 3:
+        if hit and delta_depth >= 2: #and board.board[ttbm] == 3:
             return g, ttbm
             
         bm = None # initalize best moves to store
@@ -196,7 +266,7 @@ class Searcher:
                 
                 gc, __ = self.tt_alpha_beta(board, depth-1, alpha, beta, 
                                             False, board.get_opposite_color(color),
-                                            time_limit)
+                                            time_limit, switch)
                 
                 if isinstance (gc, tuple) == True:
                     gc = gc[0]
@@ -228,7 +298,7 @@ class Searcher:
 
                 gc, __ = self.tt_alpha_beta(board, depth-1, alpha, beta, 
                                             True, board.get_opposite_color(color),
-                                            time_limit)
+                                            time_limit, switch)
                 
                 if isinstance (gc, tuple) == True:
                     gc = gc[0]
@@ -249,13 +319,13 @@ class Searcher:
                     # print("tt alpha cutoff:({})".format(tt_alpha_cutoff))
                     break
             
-            run_time += time.time() - start_time
+            if switch == True: run_time += time.time() - start_time
             # print("run_time:",run_time)
             # board.print()
         save(board, g, delta_depth, bm)
         return g, bm # return best value and best move
     
-    def iter_deep(self, board, max_player, alpha, beta, color, time_limit, use_tt):
+    def iter_deep(self, board, max_player, alpha, beta, color, time_limit, use_tt, switch):
         global maxDepth
 
         # Start timer
@@ -270,12 +340,12 @@ class Searcher:
                 
                 # find the bm  with use of transposition tables and iterative depth
                 __, bm = self.tt_alpha_beta(board, depth, alpha, beta, max_player, color,
-                          time_limit)
+                          time_limit, switch)
     
             else:
                 # find the bm  without use of transposition tables and iterative depth
                 __, bm = self.alpha_beta(board, depth, alpha, beta, max_player, color, 
-                        time_limit)
+                        time_limit, switch)
     
             elapsed = time.time() - start
             # print('Time Elapsed:{}'.format(elapsed))

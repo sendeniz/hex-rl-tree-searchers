@@ -4,7 +4,8 @@ import numpy as np
 class player:
 
     def __init__(self, agent, color, policy = None, 
-                 depth = 2, eval = None, time_limit = 1, use_tt = False, max_iter = 100, C = np.sqrt(2)):
+                 depth = None, eval = None, time_limit = 1, use_tt = False, max_iter = 100, C = np.sqrt(2),
+                 switch = False):
 
         self.agent = agent
         self.color = color
@@ -15,6 +16,7 @@ class player:
         self.use_tt = use_tt
         self.max_iter = max_iter
         self.C = C
+        self.switch = switch 
 
     def move(self, board,verbose):
 
@@ -50,9 +52,9 @@ class player:
             # Use the searcher to find the best move and place it on the board
 
             search = Searcher(depth = self.depth, policy = self.policy, board = board, 
-                              color = self.color, eval = self.eval, 
+                              color = self.color, eval = self.eval,
                               time_limit = self.time_limit, use_tt = self.use_tt,
-                              max_iter = self.max_iter, C = self.C)
+                              max_iter = self.max_iter, C = self.C, switch = self.switch)
 
             best_move = search.find_bm()
             if verbose:
